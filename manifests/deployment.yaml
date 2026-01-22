@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llmops-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: llmops-app
+  template:
+    metadata:
+      labels:
+        app: llmops-app
+    spec:
+      containers:
+      - name: llmops-app
+        image: rubybriggs/studybuddy:v15
+        ports:
+        - containerPort: 8501
+        env:
+        - name: GROQ_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: groq-api-secret
+              key: GROQ_API_KEY
+
