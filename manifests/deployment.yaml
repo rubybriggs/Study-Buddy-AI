@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: llmops-app
-        image: rubybriggs/studybuddy:v25
+        image: rubybriggs/studybuddy:v26
         ports:
         - containerPort: 8501
         env:
