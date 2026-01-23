@@ -70,9 +70,17 @@ pipeline {
         stage('Apply Kubernetes & Sync App with ArgoCD') {
             steps {
                 script {
-                    kubeconfig(credentialsId: 'kubeconfig', serverUrl: 'https://192.168.49.2:8443') {
+                    // Corrected wrapper to inject your 'minikube' context
+                    withKubeConfig([credentialsId: 'kubeconfig', serverUrl: 'https://192.168.49.2:8443']) {
                         sh '''
-                        argocd login 34.61.123.87:31704 --username admin --password $(kubectl get secret -n argocd argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d) --insecure
+                        # Force the use of the minikube context found in your config file
+                        kubectl config use-context minikube
+                        
+                        # Fetch ArgoCD password into a variable to keep the login command clean
+                        ARGOCD_PWD=$(kubectl get secret -n argocd argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)
+                        
+                        # Login and Sync
+                        argocd login 34.61.123.87:31704 --username admin --password ${ARGOCD_PWD} --insecure
                         argocd app sync study
                         '''
                     }
@@ -80,5 +88,5 @@ pipeline {
             }
         }
     }
-}
+} 
 
