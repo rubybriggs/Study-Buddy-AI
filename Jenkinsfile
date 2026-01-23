@@ -6,8 +6,10 @@ pipeline {
         IMAGE_TAG = "v${BUILD_NUMBER}"
     }
     stages {
-        stage('Checkout Github') {
+        stage('Cleanup & Checkout') {
             steps {
+                // This wipes the workspace to remove the corrupted deployment.yaml
+                cleanWs() 
                 echo 'Checking out code from GitHub...'
                 checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[credentialsId: 'github-token', url: 'https://github.com/rubybriggs/Study-Buddy-AI.git']])
             }
@@ -33,13 +35,13 @@ pipeline {
         stage('Update Deployment YAML with New Tag') {
             steps {
                 script {
+                    // Corrected to match 'rubybriggs/studybuddy' as seen in your GitHub screenshot
                     sh """
-                    sed -i 's|image: rubybriggs/study-buddy-ai:.*|image: rubybriggs/study-buddy-ai:${IMAGE_TAG}|' manifests/deployment.yaml
+                    sed -i 's|image: rubybriggs/studybuddy:.*|image: rubybriggs/studybuddy:${IMAGE_TAG}|' manifests/deployment.yaml
                     """
                 }
             }
         }
-
         stage('Commit Updated YAML') {
             steps {
                 script {
@@ -70,23 +72,16 @@ pipeline {
         stage('Apply Kubernetes & Sync App with ArgoCD') {
             steps {
                 script {
-                    // Corrected wrapper to inject your 'minikube' context
-                    withKubeConfig([credentialsId: 'kubeconfig', serverUrl: 'https://192.168.49.2:8443']) {
-                        sh '''
-                        # Force the use of the minikube context found in your config file
-                        kubectl config use-context minikube
-                        
-                        # Fetch ArgoCD password into a variable to keep the login command clean
-                        ARGOCD_PWD=$(kubectl get secret -n argocd argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)
-                        
-                        # Login and Sync
-                        argocd login 34.61.123.87:31704 --username admin --password ${ARGOCD_PWD} --insecure
-                        argocd app sync study
+                withKubeConfig([credentialsId: 'kubeconfig', serverUrl: 'https://192.168.49.2:8443']) {
+                    sh '''
+                    kubectl config use-context minikube
+                    ARGOCD_PWD=$(kubectl get secret -n argocd argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)
+                    argocd login 34.61.123.87:31704 --username admin --password ${ARGOCD_PWD} --insecure
+                    rgocd app sync study
                         '''
                     }
                 }
             }
         }
     }
-} 
-
+}
