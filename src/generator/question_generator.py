@@ -1,3 +1,4 @@
+
 from langchain_core.output_parsers import PydanticOutputParser
 from src.models.question_schemas import MCQQuestion,FillBlankQuestion
 from src.prompts.templates import mcq_prompt_template,fill_blank_prompt_template
@@ -31,23 +32,36 @@ class QuestionGenerator:
                 if attempt==settings.MAX_RETRIES-1:
                     raise CustomException(f"Generation failed after {settings.MAX_RETRIES} attempts", e)
                 
-    
-    def generate_mcq(self,topic:str,difficulty:str='medium') -> MCQQuestion:
+    def generate_mcq(self, topic: str, difficulty: str = 'medium') -> MCQQuestion:
         try:
             parser = PydanticOutputParser(pydantic_object=MCQQuestion)
 
-            question = self._retry_and_parse(mcq_prompt_template,parser,topic,difficulty)
+            question = self._retry_and_parse(mcq_prompt_template, parser, topic, difficulty)
 
-            if len(question.options) != 4 or question.correct_answer not in question.options:
-                raise ValueError("Invalid MCQ Structure")
-            
+            # 1. Normalize options and correct_answer to prevent whitespace errors
+            options = [opt.strip() for opt in question.options]
+            correct_answer = question.correct_answer.strip()
+        
+            # Update the object with cleaned strings
+            question.options = options
+            question.correct_answer = correct_answer
+
+            # 2. Strict validation check
+            is_valid_length = len(options) == 4
+            is_answer_in_options = correct_answer in options
+
+            if not is_valid_length or not is_answer_in_options:
+            # Enhanced error message for debugging
+                error_details = f"Options: {len(options)}, Match Found: {is_answer_in_options}"
+            self.logger.warning(f"Validation failed: {error_details}. Raw: {question}")
+            raise ValueError(f"Invalid MCQ Structure ({error_details})")
+        
             self.logger.info("Generated a valid MCQ Question")
             return question
-        
+    
         except Exception as e:
             self.logger.error(f"Failed to generate MCQ : {str(e)}")
-            raise CustomException("MCQ generation failed" , e)
-        
+            raise CustomException("MCQ generation failed", e) 
     
     def generate_fill_blank(self,topic:str,difficulty:str='medium') -> FillBlankQuestion:
         try:
