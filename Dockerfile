@@ -1,27 +1,28 @@
-## Parent image
 FROM python:3.10-slim
 
-## Essential environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-## Work directory inside the docker container
 WORKDIR /app
 
-## Installing system dependancies
-RUN apt-get update && apt-get install -y \
-    build-essential \
+# Install ONLY what is necessary for the build phase
+# We keep curl for the healthchecks/downloads, but minimize build-essential usage
+RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
+    build-essential \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-## Copying ur all contents from local to app
+# 1. Copy requirement files first
+COPY setup.py .
+COPY requirements.txt .
+
+# 2. Install dependencies (Prefer binaries to avoid long compilation times)
+RUN pip install --no-cache-dir --prefer-binary -e .
+
+# 3. Copy application code last
 COPY . .
 
-## Run setup.py
-RUN pip install --no-cache-dir -e .
-
-# Used PORTS
 EXPOSE 8501
 
-# Run the app 
 CMD ["streamlit", "run", "application.py", "--server.port=8501", "--server.address=0.0.0.0","--server.headless=true"]
