@@ -6,14 +6,10 @@ pipeline {
         IMAGE_TAG = "v${BUILD_NUMBER}"
     }
     stages {
-        stage('Cleanup & Checkout') {
+        stage('Checkout Github') {
             steps {
-                cleanWs() 
                 echo 'Checking out code from GitHub...'
-                // Simplified git checkout to avoid YAML/DSL parser errors
-                git branch: 'main', 
-                    credentialsId: 'github-token', 
-                    url: 'https://github.com/rubybriggs/Study-Buddy-AI.git'
+                checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[credentialsId: 'github-token', url: 'https://github.com/rubybriggs/Study-Buddy-AI.git']])
             }
         }        
         stage('Build Docker Image') {
@@ -37,23 +33,23 @@ pipeline {
         stage('Update Deployment YAML with New Tag') {
             steps {
                 script {
-                    // Updates the image tag in your manifest file
                     sh """
                     sed -i 's|image: rubybriggs/studybuddy:.*|image: rubybriggs/studybuddy:${IMAGE_TAG}|' manifests/deployment.yaml
                     """
                 }
             }
         }
-    stage('Commit Updated YAML') {
+
+        stage('Commit Updated YAML') {
             steps {
                 script {
                     withCredentials([usernamePassword(credentialsId: 'github-token', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_PASS')]) {
                         sh '''
                         git config user.name "rubybriggs"
-                        git config user.email "rubybriggs@gmail.com"
+                        git config user.email "rubybriggs07@gmail.com"
                         git add manifests/deployment.yaml
                         git commit -m "Update image tag to ${IMAGE_TAG}" || echo "No changes to commit"
-                        git push https://${GIT_USER}:${GIT_PASS}@github.com/rubybriggs/Study-Buddy-AI.git HEAD:main
+                        git push https://${GIT_USER}:${GIT_PASS}@github.com/data-guru0/STUDY-BUDDY-AI.git HEAD:main
                         '''
                     }
                 }
@@ -62,7 +58,7 @@ pipeline {
         stage('Install Kubectl & ArgoCD CLI Setup') {
             steps {
                 sh '''
-                echo 'Installing tools...'
+                echo 'installing Kubectl & ArgoCD cli...'
                 curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
                 chmod +x kubectl
                 mv kubectl /usr/local/bin/kubectl
@@ -74,16 +70,9 @@ pipeline {
         stage('Apply Kubernetes & Sync App with ArgoCD') {
             steps {
                 script {
-                    withKubeConfig([credentialsId: 'kubeconfig', serverUrl: 'https://192.168.49.2:8443']) {
+                    kubeconfig(credentialsId: 'kubeconfig', serverUrl: 'https://192.168.49.2:8443') {
                         sh '''
-                        kubectl config use-context minikube
-                        
-                        # Apply individual files to avoid concatenation errors
-                        kubectl apply -f manifests/
-
-                        ARGOCD_PWD=$(kubectl get secret -n argocd argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)
-                        
-                        argocd login 34.61.123.87:31704 --username admin --password ${ARGOCD_PWD} --insecure
+                        argocd login 34.45.193.5:31704 --username admin --password $(kubectl get secret -n argocd argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d) --insecure
                         argocd app sync study
                         '''
                     }
