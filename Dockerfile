@@ -1,37 +1,26 @@
-# Stage 1: Builder
-FROM python:3.10-slim AS builder
-
-# Set shell to fail fast
-SHELL ["/bin/bash", "-c"]
+# Use Bookworm (Stable) instead of Trixie (Testing)
+FROM python:3.10-slim-bookworm AS builder
 
 WORKDIR /app
 
-# Install build dependencies
+# Only install what you absolutely need
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    curl \
+    gcc \
+    libc6-dev \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-# Install to /install instead of /root/.local for cleaner copying
-RUN pip install --prefix=/install --no-cache-dir -r requirements.txt
+# Use --user or --prefix to keep the build stage clean
+RUN pip install --user --no-cache-dir -r requirements.txt
 
 # Stage 2: Final Image
-FROM python:3.10-slim
+FROM python:3.10-slim-bookworm
 WORKDIR /app
 
-# Install ONLY runtime libraries if needed (e.g., libpq for postgres)
-# If your app is simple pure-python, you can skip this RUN block.
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq5 \ 
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy the installed packages from the builder
-COPY --from=builder /install /usr/local
+COPY --from=builder /root/.local /root/.local
 COPY . .
 
-# Set environment variables
-ENV PYTHONDONTWRITEBYTECODE=1 \
+ENV PATH=/root/.local/bin:$PATH \
     PYTHONUNBUFFERED=1
 
 CMD ["python", "app.py"]
