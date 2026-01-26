@@ -16,9 +16,9 @@ spec:
       containers:
       - name: llmops-app
 <<<<<<< HEAD
-        image: rubybriggs/studybuddy:v71
+        image: rubybriggs/studybuddy:v72
 =======
-        image: rubybriggs/studybuddy:v71
+        image: rubybriggs/studybuddy:v72
 >>>>>>> 9a5dcab0bc2ba8461f4be2216305489e33e75b85
         ports:
         - containerPort: 8501
