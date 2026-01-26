@@ -65,11 +65,13 @@ pipeline {
         
         stage('Cleanup Docker Images') {
             steps {
-                sh '''
-                echo "Cleaning up Docker images..."
-                docker rmi ${DOCKER_HUB_REPO}:${IMAGE_TAG} 2>/dev/null || true
-                docker system prune -f 2>/dev/null || true
-                '''
+                script {
+                    sh """
+                    echo "Cleaning up Docker images..."
+                    docker rmi ${DOCKER_HUB_REPO}:${IMAGE_TAG} 2>/dev/null || true
+                    docker system prune -f 2>/dev/null || true
+                    """
+                }
             }
         }
         
@@ -77,7 +79,7 @@ pipeline {
             steps {
                 script {
                     echo "Updating deployment.yaml with tag: ${IMAGE_TAG}"
-                    sh "sed -i 's|image: rubybriggs/studybuddy:.*|image: rubybrigds/studybuddy:${IMAGE_TAG}|' manifests/deployment.yaml"
+                    sh "sed -i 's|image: rubybriggs/studybuddy:.*|image: rubybriggs/studybuddy:${IMAGE_TAG}|' manifests/deployment.yaml"
                     sh "grep 'image:' manifests/deployment.yaml"
                 }
             }
@@ -155,7 +157,7 @@ pipeline {
                         users:
                         - name: minikube
                           user:
-                            token: eyJhbGciOiJSUzI1NiIsImtpZCI6IkVxV1VkOHY1TkY1YWhrZ09mY2JTNU1HQlRjVHB1dG5aRXNiNW5IbzF3QmcifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJrdWJlLXN5c3RlbSIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VjcmV0Lm5hbWUiOiJkZWZhdWx0LXRva2VuLXQ3ajJmIiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZXJ2aWNlLWFjY291bnQubmFtZSI6ImRlZmF1bHQiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC51aWQiOiI4N2ZjYzZiMi1iMmNlLTRmYzgtOTExYy1kOTVjZDQ1MjViNTQiLCJzdWIiOiJzeXN0ZW06c2VydmljZWFjY291bnQ6a3ViZS1zeXN0ZW06ZGVmYXVsdCJ9.YOUR_TOKEN_HERE
+                            token: eyJhbGciOiJSUzI1NiIsImtpZCI6IkVxV1VkOHY1TkY1YWhrZ09mY2JTNU1HQlRjVHB1dG5aRXNiNW5IbzF3QmcifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJrdWJlLXN5c3RlbSIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VjcmV0Lm5hbWUiOiJkZWZhdWx0LXRva2VuLXQ3ajJmIiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZXJ2aWNlLWFjY291bnQubmFtZSI6ImRlZmF1bHQiLCJrdWJlcm5ldGVzLmlvL3N2aWNlYWNjb3VudC9zZXJ2aWNlLWFjY291bnQudWlkIjoiODdmY2M2YjItYjJjZS00ZmM4LTkxMWMtZDk1Y2Q0NTI1YjU0Iiwic3ViIjoic3lzdGVtOnNlcnZpY2VhY2NvdW50Omt1YmUtc3lzdGVtOmRlZmF1bHQifQ.YOUR_TOKEN_HERE
                         EOF
                         export KUBECONFIG=kubeconfig-minimal.yaml
                     fi
@@ -223,16 +225,16 @@ pipeline {
             }
         }
         success {
-            echo "Pipeline succeeded!"
-            echo "✓ Docker image: ${DOCKER_HUB_REPO}:${IMAGE_TAG}"
-            echo "✓ GitHub repository updated"
-            echo "✓ Image available on Docker Hub"
-            if (params.SKIP_KUBERNETES) {
-                echo "⚠ Kubernetes deployment was skipped (parameter SKIP_KUBERNETES=true)"
-            } else {
-                echo "✓ ArgoCD sync completed"
-            }
             script {
+                echo "Pipeline succeeded!"
+                echo "✓ Docker image: ${DOCKER_HUB_REPO}:${IMAGE_TAG}"
+                echo "✓ GitHub repository updated"
+                echo "✓ Image available on Docker Hub"
+                if (params.SKIP_KUBERNETES) {
+                    echo "⚠ Kubernetes deployment was skipped (parameter SKIP_KUBERNETES=true)"
+                } else {
+                    echo "✓ ArgoCD sync completed"
+                }
                 currentBuild.result = 'SUCCESS'
             }
         }
